@@ -51,8 +51,11 @@ export default function GeneratorScreen() {
   };
 
   const generateDocument = () => {
-    // In a real app, this would send data to backend and generate PDF
-    router.push('/specification/preview');
+    // Pass form data to the preview screen
+    router.push({
+      pathname: '/specification/preview',
+      params: formData
+    });
   };
 
   const renderStepIndicator = () => {
