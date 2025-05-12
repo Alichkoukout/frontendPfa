@@ -31,6 +31,15 @@ const AuthContext = createContext<AuthContextProps>({
 // Export a hook that will be used to access the context
 export const useAuth = () => useContext(AuthContext);
 
+// Helper function to get user from storage
+const getStoredUser = () => {
+  if (typeof window !== 'undefined') {
+    const userStr = window.localStorage.getItem('user');
+    return userStr ? JSON.parse(userStr) : null;
+  }
+  return null;
+};
+
 // Define the provider component
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -41,16 +50,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Check if the user is authenticated on initial load
   useEffect(() => {
-    // Simulate checking for stored authentication token
     const checkAuthStatus = async () => {
       try {
-        // In a real app, you would check for a stored token here
-        const storedUser = null; // For now, always start as logged out
-        
+        const storedUser = getStoredUser();
         setUser(storedUser);
-        setIsLoading(false);
       } catch (e) {
         console.error('Failed to check auth status:', e);
+        setUser(null);
+      } finally {
         setIsLoading(false);
       }
     };
@@ -75,7 +82,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Sign in function
   const signIn = async (userData: User) => {
-    setUser(userData);
+    try {
+      // Store user data in localStorage
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('user', JSON.stringify(userData));
+      }
+      setUser(userData);
+    } catch (e) {
+      console.error('Failed to sign in:', e);
+      setError('Failed to sign in. Please try again.');
+    }
   };
 
   // Sign up function
@@ -106,9 +122,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     
     try {
-      // Simulate an API call to sign out
-      // In a real app, this would involve clearing stored tokens
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Clear stored data
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem('user');
+      }
       
       // Clear the user state
       setUser(null);

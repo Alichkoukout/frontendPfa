@@ -6,6 +6,8 @@ import { ArrowLeft, Download, Share2, Check, Printer, List } from 'lucide-react-
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 
 // Define the section type
 interface Section {
@@ -58,6 +60,7 @@ export default function SpecificationPreviewScreen() {
 
   // Fetch all specifications from backend
   const fetchAllSpecifications = async () => {
+    if (isLoading) return; // Prevent multiple simultaneous requests
     setIsLoading(true);
     try {
       const response = await fetch(API_BASE_URL);
@@ -68,30 +71,20 @@ export default function SpecificationPreviewScreen() {
       setAllSpecifications(data);
     } catch (error) {
       console.error('Error fetching specifications:', error);
-      // Don't show alert in production
-      // alert('Failed to fetch specifications. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Separate useEffect for fetching specifications
   useEffect(() => {
-    // Fetch all specifications when component mounts
-    const fetchData = async () => {
-      try {
-        await fetchAllSpecifications();
-      } catch (error) {
-        console.error("Failed to load specifications:", error);
-      }
-    };
-    
-    fetchData();
-    
-    // Get form data from local storage
+    fetchAllSpecifications();
+  }, []); // Empty dependency array means it only runs once on mount
+
+  // Separate useEffect for loading form data
+  useEffect(() => {
     const loadFormData = async () => {
       try {
-        // In a real app, you might get this data from an API or context
-        // For now, we'll use the data passed from the generator screen
         if (params) {
           // Create sections array based on form data
           const sections = [
@@ -125,7 +118,6 @@ export default function SpecificationPreviewScreen() {
             }
           ].filter(section => section.content && section.content.trim() !== '');
 
-          // Set the specification data
           setSpecificationData({
             projectName: params.projectName?.toString() || 'Projet sans nom',
             projectType: params.projectType?.toString() || 'Type non spécifié',
@@ -144,7 +136,7 @@ export default function SpecificationPreviewScreen() {
     };
 
     loadFormData();
-  }, [params]);
+  }, [params]); // Only run when params change
 
   // Generate HTML content for PDF
   const generateHtml = (specification: Specification) => {
@@ -313,12 +305,31 @@ export default function SpecificationPreviewScreen() {
     setIsDownloading(true);
     
     try {
-      // First generate the PDF
-      const pdfGenerated = await generatePDF();
+      // Generate HTML content
+      const html = generateHtml(specificationData);
       
-      if (!pdfGenerated) {
-        throw new Error('Failed to generate PDF');
-      }
+      // Create a temporary div to render the HTML
+      const element = document.createElement('div');
+      element.innerHTML = html;
+      document.body.appendChild(element);
+      
+      // Convert HTML to canvas
+      const canvas = await html2canvas(element);
+      document.body.removeChild(element);
+      
+      // Create PDF
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgData = canvas.toDataURL('image/png');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      
+      // Generate filename
+      const fileName = `${specificationData.projectName.replace(/\s+/g, '_')}_${Date.now()}.pdf`;
+      
+      // Download the PDF
+      pdf.save(fileName);
       
       // Then send the specification data to the backend
       const response = await fetch(API_BASE_URL, {

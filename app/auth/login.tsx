@@ -147,7 +147,7 @@ export default function LoginScreen() {
           </TouchableOpacity>
 
           <View style={styles.registerContainer}>
-            <Text style={styles.registerText}>Pas encore de compte ?</Text>
+            <Text style={styles.registerText}>Pas encore inscrit ? </Text>
             <Link href="/auth/register" asChild>
               <TouchableOpacity>
                 <Text style={styles.registerLink}>S'inscrire</Text>
@@ -155,7 +155,7 @@ export default function LoginScreen() {
             </Link>
           </View>
 
-          <Text>Bonjour, {user?.name}</Text>
+          <Text> {user?.name}</Text>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

@@ -3,12 +3,86 @@ import { useRouter } from 'expo-router';
 import { FileIcon, ClipboardListIcon, UserIcon, ChevronRight } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/context/AuthContext';
+import { useState, useEffect } from 'react';
+
+interface Statistics {
+  totalDocuments: number;
+  inProgressDocuments: number;
+  daysActive: number;
+}
+
+// Helper function to get token from storage
+const getToken = () => {
+  if (typeof window !== 'undefined') {
+    return window.localStorage.getItem('token');
+  }
+  return null;
+};
 
 export default function HomeScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const { signOut, user } = useAuth();
+  const [statistics, setStatistics] = useState<Statistics>({
+    totalDocuments: 0,
+    inProgressDocuments: 0,
+    daysActive: 0
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch statistics from backend
+  const fetchStatistics = async () => {
+    try {
+      const token = getToken();
+      console.log('Token:', token ? 'Present' : 'Missing'); // Log token status
+
+      if (!token) {
+        console.log('No authentication token found');
+        setIsLoading(false);
+        return;
+      }
+
+      console.log('Fetching statistics from:', 'http://localhost:9090/api/statistics');
+      
+      const response = await fetch('http://localhost:9090/api/statistics', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        credentials: 'include'
+      });
+      
+      console.log('Response status:', response.status);
+      
+      if (!response.ok) {
+        const errorData = await response.text();
+        console.error('Error response:', errorData);
+        throw new Error(`Failed to fetch statistics: ${response.status} ${errorData}`);
+      }
+      
+      const data = await response.json();
+      console.log('Received statistics:', data);
+      setStatistics(data);
+    } catch (error) {
+      console.error('Detailed error:', error);
+      // Set default values in case of error
+      setStatistics({
+        totalDocuments: 0,
+        inProgressDocuments: 0,
+        daysActive: 0
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStatistics();
+  }, []);
 
   const recentSpecifications = [
     {
@@ -49,12 +123,20 @@ export default function HomeScreen() {
         </Text>
       </LinearGradient>
 
+      {error && (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      )}
+
       <View style={styles.statsContainer}>
         <View style={[styles.statCard, { backgroundColor: isDark ? '#1F2937' : '#FFFFFF' }]}>
           <View style={[styles.statIconContainer, { backgroundColor: '#E0F2FE' }]}>
             <FileIcon size={20} color="#0284C7" />
           </View>
-          <Text style={[styles.statValue, { color: isDark ? '#FFFFFF' : '#1F2937' }]}>8</Text>
+          <Text style={[styles.statValue, { color: isDark ? '#FFFFFF' : '#1F2937' }]}>
+            {isLoading ? '...' : statistics.totalDocuments}
+          </Text>
           <Text style={[styles.statLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>Documents</Text>
         </View>
         
@@ -62,7 +144,9 @@ export default function HomeScreen() {
           <View style={[styles.statIconContainer, { backgroundColor: '#DCF3EE' }]}>
             <ClipboardListIcon size={20} color="#0D9488" />
           </View>
-          <Text style={[styles.statValue, { color: isDark ? '#FFFFFF' : '#1F2937' }]}>3</Text>
+          <Text style={[styles.statValue, { color: isDark ? '#FFFFFF' : '#1F2937' }]}>
+            {isLoading ? '...' : statistics.inProgressDocuments}
+          </Text>
           <Text style={[styles.statLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>En cours</Text>
         </View>
         
@@ -70,7 +154,9 @@ export default function HomeScreen() {
           <View style={[styles.statIconContainer, { backgroundColor: '#F5E5F5' }]}>
             <UserIcon size={20} color="#BE185D" />
           </View>
-          <Text style={[styles.statValue, { color: isDark ? '#FFFFFF' : '#1F2937' }]}>142</Text>
+          <Text style={[styles.statValue, { color: isDark ? '#FFFFFF' : '#1F2937' }]}>
+            {isLoading ? '...' : statistics.daysActive}
+          </Text>
           <Text style={[styles.statLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>Jours</Text>
         </View>
       </View>
@@ -336,5 +422,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#3B82F6',
     fontWeight: '500',
+  },
+  errorContainer: {
+    margin: 20,
+    padding: 15,
+    backgroundColor: '#FEE2E2',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+  },
+  errorText: {
+    color: '#DC2626',
+    fontSize: 14,
+    textAlign: 'center',
   },
 });
