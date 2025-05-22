@@ -6,6 +6,8 @@ import { CheckCircle2, AlertCircle, ArrowLeft } from 'lucide-react-native';
 
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
+  const [test, setTest] = useState('');
+  const [testtest, setTesttest] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
