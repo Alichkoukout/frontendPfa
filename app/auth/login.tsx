@@ -228,7 +228,7 @@ const styles = StyleSheet.create({
     borderColor: '#D1D5DB',
     borderRadius: 8,
     padding: 12,
-    fontSize: 16,
+    fontSize: 18,
   },
   forgotPassword: {
     fontSize: 14,
